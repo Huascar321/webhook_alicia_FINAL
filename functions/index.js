@@ -36,7 +36,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
   console.log('Dialogflow Request body: ' + JSON.stringify(request.body));
 
   function welcome (agent) {
-    agent.add(`Hola gente hermosa, probando el webhook, funciona a la perfeccion`);
+    agent.add(`Ola wacho, que tal loco?`);
   }
 
   function fallback (agent) {

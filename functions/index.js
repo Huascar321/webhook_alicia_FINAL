@@ -19,6 +19,14 @@
 const functions = require('firebase-functions');
 const {WebhookClient} = require('dialogflow-fulfillment');
 const {Card, Suggestion} = require('dialogflow-fulfillment');
+const admin = require('firebase-admin');
+admin.initializeApp(functions.config().firebase);
+var _ci;
+
+/*admin.initializeApp({
+	credential: admin.credential.applicationDefault(),
+  	databaseURL: 'ws://proyecto-aliciadw-vpdqdi.firebaseio.com/'
+}); */
 
 process.env.DEBUG = 'dialogflow:debug'; // enables lib debugging statements
 
@@ -28,12 +36,54 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
   console.log('Dialogflow Request body: ' + JSON.stringify(request.body));
 
   function welcome (agent) {
-    agent.add(`Welcome to my agent!`);
+    agent.add(`Hola gente hermosa, probando el webhook, funciona a la perfeccion`);
   }
 
   function fallback (agent) {
     agent.add(`I didn't understand`);
     agent.add(`I'm sorry, can you try again?`);
+  }
+
+  function verificarCarnet(agent){
+    _ci = null;
+    const carnet = agent.parameters.ci;
+    if(carnet.toString().length < 9){
+		return admin.database().ref("usuarios").once("value").then((snapshot) => {
+		  const value = snapshot.child(carnet.toString()).exists();
+          if(value){
+            agent.add(`El número de CI ya fue registrado, intente nuevamente`); //AQUI EMPIEZA SU LABURO :D (, ¿Desea modificar algun dato?)
+          }
+          else{
+            _ci = carnet;
+          }
+		});
+    }
+    else{
+      	agent.add(`El numero de carnet debe tener máximo 8 digitos. Por favor ingrese un CI válido.`);
+    }
+  }
+
+  function registroDatosPersonales(agent){
+    const nombre = agent.parameters.nombre[0];
+    const apellidoPaterno = agent.parameters.apellidoPaterno[0];
+    const apellidoMaterno = agent.parameters.apellidoMaterno[0];
+    const edad = agent.parameters.edad.toString();
+    const sexo = agent.parameters.sexo.toString();
+    const departamento = agent.parameters.departamento.toString();
+    const numero = agent.parameters.numero.toString();
+    //const today = new Date();
+    //const date = today.getFullYear()+'-'+(today.getMonth()+1)+'-'+today.getDate();
+    return admin.database().ref('usuarios/'+_ci).set({
+    	nombre: nombre,
+      	apellidoPaterno: apellidoPaterno,
+      	apellidoMaterno: apellidoMaterno,
+        edad: edad,
+        sexo: sexo,
+        departamento: departamento,
+      	telefono:numero,
+      	ci:_ci,
+      	//fechaUltimaModificacion:date
+    });
   }
 
   // // Uncomment and edit to make your own intent handler
@@ -67,6 +117,8 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
   let intentMap = new Map();
   intentMap.set('Default Welcome Intent', welcome);
   intentMap.set('Default Fallback Intent', fallback);
+  intentMap.set('controlRegistroCI',verificarCarnet);
+  intentMap.set('controlRegistroDatos',registroDatosPersonales);
   // intentMap.set('<INTENT_NAME_HERE>', yourFunctionHandler);
   // intentMap.set('<INTENT_NAME_HERE>', googleAssistantHandler);
   agent.handleRequest(intentMap);
